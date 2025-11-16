@@ -1,11 +1,14 @@
 {
   "name": "visitor-pass-service",
-  "version": "1.0.0",
-  "description": "Visitor Pass QR Generator",
+  "version": "2.0.0",
+  "description": "Minimalist Visitor Pass QR Generator - Secure Design",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
+  "keywords": ["visitor", "pass", "qrcode", "security"],
+  "author": "",
+  "license": "MIT",
   "dependencies": {
     "express": "^4.18.2",
     "qrcode": "^1.5.3"
