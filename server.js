@@ -1,5 +1,5 @@
 // Minimalist Visitor Pass QR Generator
-// Only Request ID - Secure & Simple
+// Short URLs - Just Request ID
 
 const express = require('express');
 const QRCode = require('qrcode');
@@ -70,12 +70,24 @@ app.get('/', (req, res) => {
                     font-size: 14px;
                     margin-top: 15px;
                 }
+                .feature {
+                    background: #d4edda;
+                    padding: 10px 15px;
+                    border-radius: 5px;
+                    margin: 10px 0;
+                    color: #155724;
+                    font-weight: 600;
+                }
             </style>
         </head>
         <body>
             <div class="container">
                 <h1>✅ Visitor Pass Service</h1>
                 <p class="status">Service is running!</p>
+                
+                <div class="feature">
+                    ⚡ New: Shorter URLs for easier scanning!
+                </div>
                 
                 <div class="info">
                     <strong>API Endpoint:</strong>
@@ -88,7 +100,7 @@ app.get('/', (req, res) => {
   -d '{"requestId":"TEST-001"}'</code>
                 
                 <p style="margin-top: 20px; color: #666; font-size: 14px;">
-                    Minimalist & Secure Design - Only Request ID Required
+                    Minimalist & Secure - Short QR Codes
                 </p>
             </div>
         </body>
@@ -111,27 +123,22 @@ app.post('/api/pass/create', async (req, res) => {
             });
         }
 
-        // Generate unique token
-        const token = Buffer.from(
-            `${requestId}:${Date.now()}:${Math.random().toString(36)}`
-        ).toString('base64url');
-
         // Calculate expiry (24 hours from now)
         const expiryTime = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
-        // Store pass
-        activePasses.set(token, {
+        // Store pass using requestId as key (simple!)
+        activePasses.set(requestId, {
             requestId: requestId,
             createdAt: new Date().toISOString(),
             expiresAt: expiryTime.toISOString(),
             status: 'active'
         });
 
-        // Generate pass URL
+        // Generate SHORT pass URL (just /pass/requestId)
         const baseUrl = `${req.protocol}://${req.get('host')}`;
-        const passUrl = `${baseUrl}/pass/${token}`;
+        const passUrl = `${baseUrl}/pass/${requestId}`;
 
-        console.log(`✅ Pass created: ${requestId} (Token: ${token.substring(0, 15)}...)`);
+        console.log(`✅ Pass created: ${requestId}`);
 
         // Return response
         res.json({
@@ -153,12 +160,12 @@ app.post('/api/pass/create', async (req, res) => {
 // ============================================
 // DISPLAY VISITOR PASS (When User Clicks Link)
 // ============================================
-app.get('/pass/:token', async (req, res) => {
+app.get('/pass/:requestId', async (req, res) => {
     try {
-        const { token } = req.params;
+        const { requestId } = req.params;
 
-        // Get pass data
-        const passData = activePasses.get(token);
+        // Get pass data using requestId directly
+        const passData = activePasses.get(requestId);
 
         if (!passData) {
             return res.send(errorPage('Pass not found or has expired'));
@@ -173,7 +180,7 @@ app.get('/pass/:token', async (req, res) => {
             passData.status = 'expired';
         }
 
-        // Generate QR code (contains only request ID)
+        // Generate QR code (JUST request ID - very short!)
         const qrCodeImage = await QRCode.toDataURL(passData.requestId, {
             width: 350,
             margin: 2,
@@ -181,7 +188,7 @@ app.get('/pass/:token', async (req, res) => {
                 dark: '#000000',
                 light: '#FFFFFF'
             },
-            errorCorrectionLevel: 'H'
+            errorCorrectionLevel: 'M' // Medium is fine for short text
         });
 
         // Display pass page
@@ -203,7 +210,7 @@ function passPage(pass, qrCode, isExpired) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#667eea">
-    <title>Visitor Pass</title>
+    <title>Visitor Pass - ${pass.requestId}</title>
     <style>
         * { 
             margin: 0; 
@@ -476,12 +483,12 @@ setInterval(() => {
     const now = Date.now();
     let cleanedCount = 0;
     
-    for (const [token, pass] of activePasses.entries()) {
+    for (const [requestId, pass] of activePasses.entries()) {
         const expiresAt = new Date(pass.expiresAt).getTime();
         
         // Remove if expired more than 1 hour ago
         if (now - expiresAt > 60 * 60 * 1000) {
-            activePasses.delete(token);
+            activePasses.delete(requestId);
             cleanedCount++;
         }
     }
@@ -502,6 +509,7 @@ app.listen(PORT, () => {
     console.log(`✅  Status: Running`);
     console.log(`🌐  Port: ${PORT}`);
     console.log(`🔒  Mode: Minimalist & Secure`);
+    console.log(`⚡  Feature: Short URLs`);
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log('');
 });
