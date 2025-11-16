@@ -107,8 +107,8 @@ app.post('/api/pass/create', async (req, res) => {
             hostName: hostName || '',
             location: location || '',
             purpose: purpose || '',
-            validFrom: validFrom || new Date().toISOString(),
-            validTo: validTo || new Date(Date.now() + 24*60*60*1000).toISOString(),
+            validFrom: validFrom ? new Date(validFrom.replace(' ', 'T')).toISOString() : new Date().toISOString(),
+            validTo: validTo ? new Date(validTo.replace(' ', 'T')).toISOString() : new Date(Date.now() + 24*60*60*1000).toISOString(),
             status: 'active',
             createdAt: new Date().toISOString()
         });
