@@ -158,12 +158,8 @@ app.get('/pass/:token', async (req, res) => {
             passData.status = 'expired';
         }
 
-        // Generate QR code
-        const qrData = JSON.stringify({
-            requestId: passData.requestId,
-            visitor: passData.visitorName,
-            token: token
-        });
+        // Generate QR code - just the request ID
+        const qrData = passData.requestId;
 
         const qrCodeImage = await QRCode.toDataURL(qrData, {
             width: 400,
