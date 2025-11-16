@@ -294,7 +294,7 @@ function passPage(pass, qrCode, isExpired) {
     <div class="card">
         <div class="header">
             <h1>🏢 Visitor Pass</h1>
-            <p>Welcome to Our Company</p>
+            <p>Welcome to BitSlize Concept</p>
         </div>
         <div class="content">
             <div class="qr-box">
