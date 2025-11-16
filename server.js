@@ -1,88 +1,109 @@
-// Visitor Pass QR Generator Service
-// Copy this entire file to GitHub
+// Minimalist Visitor Pass QR Generator
+// Only Request ID - Secure & Simple
 
 const express = require('express');
 const QRCode = require('qrcode');
-const crypto = require('crypto');
 
 const app = express();
 app.use(express.json());
 
 const PORT = process.env.PORT || 3000;
 
-// Store passes in memory (temporary storage)
-const passes = new Map();
+// Store active passes (in-memory)
+const activePasses = new Map();
 
-// Home page - Check if service is running
+// ============================================
+// HOME PAGE - Service Status
+// ============================================
 app.get('/', (req, res) => {
     res.send(`
         <!DOCTYPE html>
         <html>
         <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <title>Visitor Pass Service</title>
             <style>
+                * { margin: 0; padding: 0; box-sizing: border-box; }
                 body {
-                    font-family: Arial, sans-serif;
-                    max-width: 600px;
-                    margin: 50px auto;
+                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    min-height: 100vh;
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
                     padding: 20px;
-                    background: #f5f5f5;
                 }
-                .card {
+                .container {
                     background: white;
-                    padding: 30px;
-                    border-radius: 10px;
-                    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                    padding: 40px;
+                    border-radius: 15px;
+                    box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+                    max-width: 600px;
                 }
-                h1 { color: #667eea; }
+                h1 { color: #667eea; margin-bottom: 10px; }
                 .status { 
                     color: #28a745; 
-                    font-size: 24px;
+                    font-size: 20px;
+                    font-weight: 600;
+                    margin: 20px 0;
+                }
+                .info { 
+                    background: #f8f9fa; 
+                    padding: 15px; 
+                    border-radius: 8px; 
                     margin: 20px 0;
                 }
                 code {
-                    background: #f4f4f4;
-                    padding: 10px;
+                    background: #2d2d2d;
+                    color: #f8f8f2;
+                    padding: 15px;
                     border-radius: 5px;
                     display: block;
                     margin: 10px 0;
+                    overflow-x: auto;
+                    font-size: 13px;
+                }
+                .endpoint {
+                    color: #667eea;
+                    font-weight: 600;
+                    font-size: 14px;
+                    margin-top: 15px;
                 }
             </style>
         </head>
         <body>
-            <div class="card">
+            <div class="container">
                 <h1>✅ Visitor Pass Service</h1>
                 <p class="status">Service is running!</p>
-                <p><strong>API Endpoint:</strong></p>
-                <code>POST ${req.protocol}://${req.get('host')}/api/pass/create</code>
-                <p style="margin-top: 20px;"><strong>Test Request:</strong></p>
-                <code>
-curl -X POST ${req.protocol}://${req.get('host')}/api/pass/create \\
+                
+                <div class="info">
+                    <strong>API Endpoint:</strong>
+                    <p class="endpoint">POST ${req.protocol}://${req.get('host')}/api/pass/create</p>
+                </div>
+                
+                <strong>Test Request:</strong>
+                <code>curl -X POST ${req.protocol}://${req.get('host')}/api/pass/create \\
   -H "Content-Type: application/json" \\
-  -d '{"requestId":"TEST-001","visitorName":"John Doe"}'
-                </code>
+  -d '{"requestId":"TEST-001"}'</code>
+                
+                <p style="margin-top: 20px; color: #666; font-size: 14px;">
+                    Minimalist & Secure Design - Only Request ID Required
+                </p>
             </div>
         </body>
         </html>
     `);
 });
 
-// API: Create Visitor Pass
+// ============================================
+// API: CREATE VISITOR PASS
+// ============================================
 app.post('/api/pass/create', async (req, res) => {
     try {
-        const {
-            requestId,
-            visitorName,
-            visitorEmail,
-            visitorPhone,
-            hostName,
-            location,
-            purpose,
-            validFrom,
-            validTo
-        } = req.body;
+        const { requestId } = req.body;
 
-        // Check required fields
+        // Validate request ID
         if (!requestId) {
             return res.status(400).json({
                 success: false,
@@ -90,42 +111,34 @@ app.post('/api/pass/create', async (req, res) => {
             });
         }
 
-        // Use provided name or default
-        const name = visitorName || 'Guest Visitor';
-
         // Generate unique token
         const token = Buffer.from(
-            `${requestId}:${Date.now()}:${crypto.randomBytes(8).toString('hex')}`
+            `${requestId}:${Date.now()}:${Math.random().toString(36)}`
         ).toString('base64url');
 
-        // Store pass data
-        passes.set(token, {
-            requestId,
-            visitorName: name,
-            visitorEmail: visitorEmail || '',
-            visitorPhone: visitorPhone || '',
-            hostName: hostName || '',
-            location: location || '',
-            purpose: purpose || '',
-            validFrom: validFrom ? new Date(validFrom.replace(' ', 'T')).toISOString() : new Date().toISOString(),
-            validTo: validTo ? new Date(validTo.replace(' ', 'T')).toISOString() : new Date(Date.now() + 24*60*60*1000).toISOString(),
-            status: 'active',
-            createdAt: new Date().toISOString()
+        // Calculate expiry (24 hours from now)
+        const expiryTime = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+        // Store pass
+        activePasses.set(token, {
+            requestId: requestId,
+            createdAt: new Date().toISOString(),
+            expiresAt: expiryTime.toISOString(),
+            status: 'active'
         });
 
         // Generate pass URL
         const baseUrl = `${req.protocol}://${req.get('host')}`;
         const passUrl = `${baseUrl}/pass/${token}`;
 
-        console.log(`✅ Pass created: ${requestId} → ${token.substring(0, 20)}...`);
+        console.log(`✅ Pass created: ${requestId} (Token: ${token.substring(0, 15)}...)`);
 
-        // Return URL to WorkHub24
+        // Return response
         res.json({
             success: true,
             requestId: requestId,
             passUrl: passUrl,
-            token: token,
-            message: 'Visitor pass created successfully'
+            expiresAt: expiryTime.toISOString()
         });
 
     } catch (error) {
@@ -137,227 +150,273 @@ app.post('/api/pass/create', async (req, res) => {
     }
 });
 
-// Display Pass Page (when visitor clicks SMS link)
+// ============================================
+// DISPLAY VISITOR PASS (When User Clicks Link)
+// ============================================
 app.get('/pass/:token', async (req, res) => {
     try {
         const { token } = req.params;
 
         // Get pass data
-        const passData = passes.get(token);
+        const passData = activePasses.get(token);
 
         if (!passData) {
-            return res.send(errorPage('Pass not found or expired'));
+            return res.send(errorPage('Pass not found or has expired'));
         }
 
         // Check if expired
         const now = new Date();
-        const validTo = new Date(passData.validTo);
-        const isExpired = now > validTo;
+        const expiresAt = new Date(passData.expiresAt);
+        const isExpired = now > expiresAt;
 
         if (isExpired) {
             passData.status = 'expired';
         }
 
-        // Generate QR code - just the request ID
-        const qrData = passData.requestId;
-
-        const qrCodeImage = await QRCode.toDataURL(qrData, {
-            width: 400,
-            margin: 2
+        // Generate QR code (contains only request ID)
+        const qrCodeImage = await QRCode.toDataURL(passData.requestId, {
+            width: 350,
+            margin: 2,
+            color: {
+                dark: '#000000',
+                light: '#FFFFFF'
+            },
+            errorCorrectionLevel: 'H'
         });
 
-        // Show pass page
+        // Display pass page
         res.send(passPage(passData, qrCodeImage, isExpired));
 
     } catch (error) {
         console.error('❌ Error displaying pass:', error);
-        res.send(errorPage('Unable to load pass'));
+        res.send(errorPage('Unable to load visitor pass'));
     }
 });
 
-// Pass Display HTML
+// ============================================
+// PASS PAGE HTML (Minimalist Design)
+// ============================================
 function passPage(pass, qrCode, isExpired) {
-    const formatDate = (d) => new Date(d).toLocaleString('en-US', {
-        month: 'short', day: 'numeric', year: 'numeric',
-        hour: '2-digit', minute: '2-digit'
-    });
-
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#667eea">
     <title>Visitor Pass</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        * { 
+            margin: 0; 
+            padding: 0; 
+            box-sizing: border-box; 
+        }
+        
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #f5f7fa;
             min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
             padding: 20px;
         }
+        
         .card {
             background: white;
             border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            max-width: 500px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+            max-width: 420px;
             width: 100%;
             overflow: hidden;
+            animation: slideUp 0.4s ease-out;
         }
+        
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
         .header {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 35px 30px;
+            text-align: center;
             color: white;
-            padding: 30px 20px;
+        }
+        
+        .header h1 {
+            font-size: 26px;
+            font-weight: 600;
+            letter-spacing: -0.5px;
+        }
+        
+        .content {
+            padding: 40px 30px;
             text-align: center;
         }
-        .header h1 { font-size: 28px; margin-bottom: 5px; }
-        .content { padding: 30px 20px; }
-        .qr-box {
-            text-align: center;
-            padding: 25px;
+        
+        .reference-section {
+            margin-bottom: 35px;
+        }
+        
+        .reference-label {
+            font-size: 15px;
+            color: #6c757d;
+            margin-bottom: 12px;
+            font-weight: 500;
+        }
+        
+        .reference-number {
+            font-size: 32px;
+            font-weight: 700;
+            color: #2d3748;
+            letter-spacing: 1px;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .qr-container {
             background: #f8f9fa;
-            border-radius: 15px;
-            margin-bottom: 25px;
-        }
-        .qr-code {
-            max-width: 300px;
-            width: 100%;
-            border: 5px solid white;
-            border-radius: 10px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-        }
-        .info-row {
-            display: flex;
-            padding: 14px 0;
-            border-bottom: 1px solid #e9ecef;
-        }
-        .info-row:last-child { border-bottom: none; }
-        .label {
-            font-weight: 600;
-            color: #495057;
-            min-width: 120px;
-            font-size: 15px;
-        }
-        .value {
-            color: #212529;
-            font-size: 15px;
-            flex: 1;
-        }
-        .badge {
+            border-radius: 16px;
+            padding: 25px;
+            margin: 30px 0;
             display: inline-block;
-            padding: 8px 18px;
-            border-radius: 20px;
-            font-size: 13px;
-            font-weight: 600;
-            text-transform: uppercase;
         }
-        .badge-active { background: #d4edda; color: #155724; }
-        .badge-expired { background: #f8d7da; color: #721c24; }
-        .alert {
-            padding: 16px;
-            border-radius: 10px;
-            margin-top: 25px;
+        
+        .qr-code {
+            width: 100%;
+            max-width: 280px;
+            height: auto;
+            display: block;
+            border-radius: 8px;
+        }
+        
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 24px;
+            border-radius: 25px;
             font-size: 15px;
-            line-height: 1.6;
+            font-weight: 600;
+            margin: 25px 0 15px 0;
+            letter-spacing: 0.5px;
         }
-        .alert-success {
-            background: #d4edda;
-            border-left: 4px solid #28a745;
+        
+        .status-active {
+            background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
             color: #155724;
         }
-        .alert-warning {
-            background: #fff3cd;
-            border-left: 4px solid #ffc107;
-            color: #856404;
+        
+        .status-expired {
+            background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+            color: #721c24;
         }
-        .footer {
-            text-align: center;
+        
+        .status-icon {
+            font-size: 18px;
+        }
+        
+        .instructions {
+            margin-top: 30px;
             padding: 20px;
             background: #f8f9fa;
-            font-size: 13px;
-            color: #6c757d;
+            border-radius: 12px;
+            font-size: 14px;
+            color: #495057;
+            line-height: 1.6;
         }
+        
+        .instructions-expired {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+        }
+        
+        .footer {
+            padding: 20px 30px;
+            background: #f8f9fa;
+            text-align: center;
+            font-size: 12px;
+            color: #adb5bd;
+            border-top: 1px solid #e9ecef;
+        }
+        
+        @media (max-width: 480px) {
+            .card {
+                border-radius: 0;
+                min-height: 100vh;
+            }
+            
+            .reference-number {
+                font-size: 28px;
+            }
+            
+            .qr-code {
+                max-width: 250px;
+            }
+        }
+        
         @media print {
-            body { background: white; }
-            .footer { display: none; }
+            body {
+                background: white;
+            }
+            
+            .card {
+                box-shadow: none;
+                max-width: 100%;
+            }
+            
+            .instructions,
+            .footer {
+                display: none;
+            }
         }
     </style>
 </head>
 <body>
     <div class="card">
         <div class="header">
-            <h1>🏢 Visitor Pass</h1>
-            <p>Welcome to BitSlize Concept</p>
+            <h1>🎫 Visitor Pass</h1>
         </div>
+        
         <div class="content">
-            <div class="qr-box">
-                <img src="${qrCode}" class="qr-code" alt="QR Code">
+            <div class="reference-section">
+                <div class="reference-label">Your reference number</div>
+                <div class="reference-number">${pass.requestId}</div>
             </div>
-            <div class="info">
-                <div class="info-row">
-                    <span class="label">Visitor Name:</span>
-                    <span class="value"><strong>${pass.visitorName}</strong></span>
-                </div>
-                ${pass.visitorEmail ? `
-                <div class="info-row">
-                    <span class="label">Email:</span>
-                    <span class="value">${pass.visitorEmail}</span>
-                </div>` : ''}
-                ${pass.hostName ? `
-                <div class="info-row">
-                    <span class="label">Host:</span>
-                    <span class="value">${pass.hostName}</span>
-                </div>` : ''}
-                ${pass.location ? `
-                <div class="info-row">
-                    <span class="label">Location:</span>
-                    <span class="value">${pass.location}</span>
-                </div>` : ''}
-                ${pass.purpose ? `
-                <div class="info-row">
-                    <span class="label">Purpose:</span>
-                    <span class="value">${pass.purpose}</span>
-                </div>` : ''}
-                <div class="info-row">
-                    <span class="label">Valid From:</span>
-                    <span class="value">${formatDate(pass.validFrom)}</span>
-                </div>
-                <div class="info-row">
-                    <span class="label">Valid Until:</span>
-                    <span class="value">${formatDate(pass.validTo)}</span>
-                </div>
-                <div class="info-row">
-                    <span class="label">Status:</span>
-                    <span class="value">
-                        <span class="badge ${isExpired ? 'badge-expired' : 'badge-active'}">
-                            ${isExpired ? 'EXPIRED' : 'ACTIVE'}
-                        </span>
-                    </span>
-                </div>
+            
+            <div class="qr-container">
+                <img src="${qrCode}" class="qr-code" alt="QR Code for ${pass.requestId}">
             </div>
-            ${isExpired ? `
-            <div class="alert alert-warning">
-                ⚠️ <strong>This pass has expired.</strong><br>
-                Please contact your host to request a new pass.
-            </div>` : `
-            <div class="alert alert-success">
-                ✅ <strong>Your pass is active!</strong><br>
-                Please show this QR code to the security personnel at reception.
-            </div>`}
+            
+            <div class="status-badge ${isExpired ? 'status-expired' : 'status-active'}">
+                <span class="status-icon">${isExpired ? '⏰' : '✓'}</span>
+                <span>${isExpired ? 'EXPIRED' : 'ACTIVE'}</span>
+            </div>
+            
+            <div class="instructions ${isExpired ? 'instructions-expired' : ''}">
+                ${isExpired 
+                    ? '⚠️ This pass has expired. Please contact your host to request a new pass.'
+                    : '📱 Show this QR code to security personnel at the reception desk.'
+                }
+            </div>
         </div>
+        
         <div class="footer">
-            Pass ID: ${pass.requestId}<br>
-            Generated: ${formatDate(pass.createdAt)}
+            Pass ID: ${pass.requestId} • Generated: ${new Date(pass.createdAt).toLocaleDateString()}
         </div>
     </div>
 </body>
 </html>`;
 }
 
-// Error Page HTML
+// ============================================
+// ERROR PAGE HTML
+// ============================================
 function errorPage(message) {
     return `<!DOCTYPE html>
 <html lang="en">
@@ -366,57 +425,83 @@ function errorPage(message) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Error</title>
     <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            font-family: sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f7fa;
+            min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
-            min-height: 100vh;
-            margin: 0;
-            background: #f5f5f5;
+            padding: 20px;
         }
-        .error {
+        .error-container {
             background: white;
-            padding: 40px;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 50px 40px;
+            border-radius: 20px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.12);
             text-align: center;
             max-width: 400px;
         }
-        h1 { color: #dc3545; font-size: 48px; margin-bottom: 20px; }
-        p { color: #666; font-size: 18px; line-height: 1.6; }
+        .error-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+        h1 {
+            font-size: 24px;
+            color: #2d3748;
+            margin-bottom: 15px;
+        }
+        p {
+            color: #718096;
+            font-size: 16px;
+            line-height: 1.6;
+        }
     </style>
 </head>
 <body>
-    <div class="error">
-        <h1>⚠️</h1>
-        <h2>Error</h2>
+    <div class="error-container">
+        <div class="error-icon">⚠️</div>
+        <h1>Unable to Load Pass</h1>
         <p>${message}</p>
     </div>
 </body>
 </html>`;
 }
 
-// Auto-cleanup old passes (runs every hour)
+// ============================================
+// CLEANUP OLD PASSES (Every Hour)
+// ============================================
 setInterval(() => {
-    const oneDay = 24 * 60 * 60 * 1000;
     const now = Date.now();
+    let cleanedCount = 0;
     
-    for (const [token, pass] of passes.entries()) {
-        const created = new Date(pass.createdAt).getTime();
-        if (now - created > oneDay) {
-            passes.delete(token);
-            console.log(`🗑️ Cleaned up old pass: ${pass.requestId}`);
+    for (const [token, pass] of activePasses.entries()) {
+        const expiresAt = new Date(pass.expiresAt).getTime();
+        
+        // Remove if expired more than 1 hour ago
+        if (now - expiresAt > 60 * 60 * 1000) {
+            activePasses.delete(token);
+            cleanedCount++;
         }
     }
-}, 60 * 60 * 1000);
+    
+    if (cleanedCount > 0) {
+        console.log(`🗑️  Cleaned up ${cleanedCount} expired pass(es)`);
+    }
+}, 60 * 60 * 1000); // Run every hour
 
-// Start server
+// ============================================
+// START SERVER
+// ============================================
 app.listen(PORT, () => {
     console.log('');
-    console.log('🚀 ========================================');
-    console.log('✅ Visitor Pass Service is RUNNING!');
-    console.log(`🌐 Port: ${PORT}`);
-    console.log('🚀 ========================================');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('🚀  VISITOR PASS SERVICE');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log(`✅  Status: Running`);
+    console.log(`🌐  Port: ${PORT}`);
+    console.log(`🔒  Mode: Minimalist & Secure`);
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log('');
 });
