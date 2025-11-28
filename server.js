@@ -209,11 +209,12 @@ function passPage(pass, qrCode, isExpired) {
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             background: #f5f7fa;
-            min-height: 100vh;
+            height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
-            padding: 20px;
+            padding: 15px;
+            overflow: hidden;
         }
         
         .card {
@@ -224,6 +225,9 @@ function passPage(pass, qrCode, isExpired) {
             width: 100%;
             overflow: hidden;
             animation: slideUp 0.4s ease-out;
+            max-height: 100vh;
+            display: flex;
+            flex-direction: column;
         }
         
         @keyframes slideUp {
@@ -239,35 +243,39 @@ function passPage(pass, qrCode, isExpired) {
         
         .header {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            padding: 35px 30px;
+            padding: 20px 25px;
             text-align: center;
             color: white;
         }
         
         .header h1 {
-            font-size: 26px;
+            font-size: 22px;
             font-weight: 600;
             letter-spacing: -0.5px;
         }
         
         .content {
-            padding: 40px 30px;
+            padding: 25px 25px 20px 25px;
             text-align: center;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
         }
         
         .reference-section {
-            margin-bottom: 35px;
+            margin-bottom: 20px;
         }
         
         .reference-label {
-            font-size: 15px;
+            font-size: 14px;
             color: #6c757d;
-            margin-bottom: 12px;
+            margin-bottom: 8px;
             font-weight: 500;
         }
         
         .reference-number {
-            font-size: 32px;
+            font-size: 28px;
             font-weight: 700;
             color: #2d3748;
             letter-spacing: 1px;
@@ -276,54 +284,28 @@ function passPage(pass, qrCode, isExpired) {
         
         .qr-container {
             background: #f8f9fa;
-            border-radius: 16px;
-            padding: 25px;
-            margin: 30px 0;
+            border-radius: 14px;
+            padding: 20px;
+            margin: 20px auto;
             display: inline-block;
         }
         
         .qr-code {
             width: 100%;
-            max-width: 280px;
+            max-width: 240px;
             height: auto;
             display: block;
             border-radius: 8px;
         }
         
-        .status-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 12px 24px;
-            border-radius: 25px;
-            font-size: 15px;
-            font-weight: 600;
-            margin: 25px 0 15px 0;
-            letter-spacing: 0.5px;
-        }
-        
-        .status-active {
-            background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
-            color: #155724;
-        }
-        
-        .status-expired {
-            background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
-            color: #721c24;
-        }
-        
-        .status-icon {
-            font-size: 18px;
-        }
-        
         .instructions {
-            margin-top: 30px;
-            padding: 20px;
+            margin-top: 15px;
+            padding: 12px 15px;
             background: #f8f9fa;
-            border-radius: 12px;
-            font-size: 14px;
+            border-radius: 10px;
+            font-size: 13px;
             color: #495057;
-            line-height: 1.6;
+            line-height: 1.5;
         }
         
         .instructions-expired {
@@ -332,26 +314,58 @@ function passPage(pass, qrCode, isExpired) {
         }
         
         .footer {
-            padding: 20px 30px;
+            padding: 12px 20px;
             background: #f8f9fa;
             text-align: center;
-            font-size: 12px;
+            font-size: 11px;
             color: #adb5bd;
             border-top: 1px solid #e9ecef;
         }
         
         @media (max-width: 480px) {
-            .card {
-                border-radius: 0;
-                min-height: 100vh;
-            }
-            
             .reference-number {
-                font-size: 28px;
+                font-size: 24px;
             }
             
             .qr-code {
-                max-width: 250px;
+                max-width: 200px;
+            }
+            
+            .header h1 {
+                font-size: 20px;
+            }
+        }
+        
+        @media (max-height: 700px) {
+            .header {
+                padding: 15px 20px;
+            }
+            
+            .header h1 {
+                font-size: 20px;
+            }
+            
+            .content {
+                padding: 20px;
+            }
+            
+            .reference-number {
+                font-size: 24px;
+            }
+            
+            .qr-code {
+                max-width: 200px;
+            }
+            
+            .qr-container {
+                padding: 15px;
+                margin: 15px auto;
+            }
+            
+            .instructions {
+                padding: 10px;
+                font-size: 12px;
+                margin-top: 10px;
             }
         }
         
@@ -386,11 +400,6 @@ function passPage(pass, qrCode, isExpired) {
             
             <div class="qr-container">
                 <img src="${qrCode}" class="qr-code" alt="QR Code for ${pass.requestId}">
-            </div>
-            
-            <div class="status-badge ${isExpired ? 'status-expired' : 'status-active'}">
-                <span class="status-icon">${isExpired ? '⏰' : '✓'}</span>
-                <span>${isExpired ? 'EXPIRED' : 'ACTIVE'}</span>
             </div>
             
             <div class="instructions ${isExpired ? 'instructions-expired' : ''}">
