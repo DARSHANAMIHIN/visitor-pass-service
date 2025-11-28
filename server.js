@@ -1,5 +1,5 @@
 // Minimalist Visitor Pass QR Generator
-// Modern Glass Ticket Design
+// Simple & Clean Design
 
 const express = require('express');
 const QRCode = require('qrcode');
@@ -70,24 +70,12 @@ app.get('/', (req, res) => {
                     font-size: 14px;
                     margin-top: 15px;
                 }
-                .feature {
-                    background: #d4edda;
-                    padding: 10px 15px;
-                    border-radius: 5px;
-                    margin: 10px 0;
-                    color: #155724;
-                    font-weight: 600;
-                }
             </style>
         </head>
         <body>
             <div class="container">
                 <h1>✅ Visitor Pass Service</h1>
                 <p class="status">Service is running!</p>
-                
-                <div class="feature">
-                    🎫 New: Modern Glass Pass Ticket Design!
-                </div>
                 
                 <div class="info">
                     <strong>API Endpoint:</strong>
@@ -100,7 +88,7 @@ app.get('/', (req, res) => {
   -d '{"requestId":"TEST-001"}'</code>
                 
                 <p style="margin-top: 20px; color: #666; font-size: 14px;">
-                    Modern Ticket Design - Professional & Sleek
+                    Minimalist & Secure Design
                 </p>
             </div>
         </body>
@@ -130,7 +118,8 @@ app.post('/api/pass/create', async (req, res) => {
         activePasses.set(requestId, {
             requestId: requestId,
             createdAt: new Date().toISOString(),
-            expiresAt: expiryTime.toISOString()
+            expiresAt: expiryTime.toISOString(),
+            status: 'active'
         });
 
         // Generate SHORT pass URL
@@ -170,6 +159,15 @@ app.get('/pass/:requestId', async (req, res) => {
             return res.send(errorPage('Pass not found or has expired'));
         }
 
+        // Check if expired
+        const now = new Date();
+        const expiresAt = new Date(passData.expiresAt);
+        const isExpired = now > expiresAt;
+
+        if (isExpired) {
+            passData.status = 'expired';
+        }
+
         // Generate QR code
         const qrCodeImage = await QRCode.toDataURL(passData.requestId, {
             width: 350,
@@ -181,8 +179,8 @@ app.get('/pass/:requestId', async (req, res) => {
             errorCorrectionLevel: 'M'
         });
 
-        // Display modern pass page
-        res.send(modernPassPage(passData, qrCodeImage));
+        // Display pass page
+        res.send(passPage(passData, qrCodeImage, isExpired));
 
     } catch (error) {
         console.error('❌ Error displaying pass:', error);
@@ -191,20 +189,9 @@ app.get('/pass/:requestId', async (req, res) => {
 });
 
 // ============================================
-// MODERN GLASS PASS TICKET DESIGN
+// PASS PAGE HTML (Simple Design)
 // ============================================
-function modernPassPage(pass, qrCode) {
-    const createdDate = new Date(pass.createdAt);
-    const formattedDate = createdDate.toLocaleDateString('en-US', { 
-        month: 'short', 
-        day: 'numeric', 
-        year: 'numeric' 
-    });
-    const formattedTime = createdDate.toLocaleTimeString('en-US', { 
-        hour: '2-digit', 
-        minute: '2-digit' 
-    });
-
+function passPage(pass, qrCode, isExpired) {
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -221,180 +208,78 @@ function modernPassPage(pass, qrCode) {
         
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #f5f7fa;
             min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
             padding: 20px;
-            position: relative;
-            overflow: hidden;
         }
         
-        /* Animated background elements */
-        body::before {
-            content: '';
-            position: absolute;
-            width: 500px;
-            height: 500px;
-            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
-            top: -250px;
-            right: -250px;
-            animation: float 15s infinite ease-in-out;
-        }
-        
-        body::after {
-            content: '';
-            position: absolute;
-            width: 400px;
-            height: 400px;
-            background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 70%);
-            bottom: -200px;
-            left: -200px;
-            animation: float 20s infinite ease-in-out reverse;
-        }
-        
-        @keyframes float {
-            0%, 100% { transform: translate(0, 0) rotate(0deg); }
-            50% { transform: translate(30px, 30px) rotate(180deg); }
-        }
-        
-        .ticket {
+        .card {
             background: white;
-            border-radius: 24px;
-            box-shadow: 
-                0 20px 60px rgba(0, 0, 0, 0.3),
-                0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+            border-radius: 20px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
             max-width: 420px;
             width: 100%;
             overflow: hidden;
-            position: relative;
-            z-index: 1;
-            animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+            animation: slideUp 0.4s ease-out;
         }
         
         @keyframes slideUp {
             from {
                 opacity: 0;
-                transform: translateY(40px) scale(0.95);
+                transform: translateY(20px);
             }
             to {
                 opacity: 1;
-                transform: translateY(0) scale(1);
+                transform: translateY(0);
             }
         }
         
-        /* Glass morphism header */
-        .ticket-header {
-            background: 
-                linear-gradient(135deg, 
-                    rgba(102, 126, 234, 0.95) 0%, 
-                    rgba(118, 75, 162, 0.95) 100%);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            padding: 40px 30px;
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 35px 30px;
             text-align: center;
             color: white;
-            position: relative;
-            overflow: hidden;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
         }
         
-        /* Glass shine effect */
-        .ticket-header::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: linear-gradient(
-                45deg,
-                transparent 30%,
-                rgba(255, 255, 255, 0.15) 50%,
-                transparent 70%
-            );
-            animation: shine 3s infinite;
+        .header h1 {
+            font-size: 26px;
+            font-weight: 600;
+            letter-spacing: -0.5px;
         }
         
-        @keyframes shine {
-            0% { transform: translateX(-100%) translateY(-100%); }
-            100% { transform: translateX(100%) translateY(100%); }
-        }
-        
-        .ticket-header h1 {
-            font-size: 28px;
-            font-weight: 700;
-            letter-spacing: 0.5px;
-            position: relative;
-            z-index: 1;
-            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 12px;
-        }
-        
-        .ticket-icon {
-            font-size: 32px;
-            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
-        }
-        
-        /* Perforation effect */
-        .perforation {
-            height: 20px;
-            background: 
-                radial-gradient(circle at 10px 0px, transparent 10px, white 10px) repeat-x,
-                linear-gradient(white, white);
-            background-size: 20px 20px, 100% 100%;
-            background-position: 0 10px, 0 0;
-        }
-        
-        .ticket-body {
+        .content {
             padding: 40px 30px;
-            background: white;
+            text-align: center;
         }
         
-        /* Reference number section */
-        .reference-box {
-            text-align: center;
+        .reference-section {
             margin-bottom: 35px;
         }
         
         .reference-label {
-            font-size: 13px;
-            text-transform: uppercase;
-            letter-spacing: 1.5px;
-            color: #9ca3af;
-            font-weight: 600;
+            font-size: 15px;
+            color: #6c757d;
             margin-bottom: 12px;
+            font-weight: 500;
         }
         
         .reference-number {
-            font-size: 36px;
-            font-weight: 800;
-            color: #1f2937;
-            letter-spacing: 2px;
-            font-family: 'SF Mono', 'Monaco', 'Courier New', monospace;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            position: relative;
-            padding: 10px 0;
+            font-size: 32px;
+            font-weight: 700;
+            color: #2d3748;
+            letter-spacing: 1px;
+            font-family: 'Courier New', monospace;
         }
         
-        /* QR code section */
-        .qr-section {
-            background: 
-                linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
-            border-radius: 20px;
-            padding: 30px;
-            text-align: center;
+        .qr-container {
+            background: #f8f9fa;
+            border-radius: 16px;
+            padding: 25px;
             margin: 30px 0;
-            box-shadow: 
-                0 4px 15px rgba(0, 0, 0, 0.05),
-                0 0 0 1px rgba(0, 0, 0, 0.02) inset;
+            display: inline-block;
         }
         
         .qr-code {
@@ -402,168 +287,122 @@ function modernPassPage(pass, qrCode) {
             max-width: 280px;
             height: auto;
             display: block;
-            margin: 0 auto;
-            border-radius: 12px;
-            background: white;
-            padding: 15px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+            border-radius: 8px;
         }
         
-        /* Instructions */
-        .instructions {
-            background: linear-gradient(135deg, #e0e7ff 0%, #ddd6fe 100%);
-            border-radius: 16px;
-            padding: 20px;
-            margin-top: 30px;
-            text-align: center;
-            border: 1px solid rgba(102, 126, 234, 0.2);
-        }
-        
-        .instructions-icon {
-            font-size: 28px;
-            margin-bottom: 10px;
-            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
-        }
-        
-        .instructions-text {
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 24px;
+            border-radius: 25px;
             font-size: 15px;
-            color: #4c1d95;
-            line-height: 1.6;
-            font-weight: 500;
+            font-weight: 600;
+            margin: 25px 0 15px 0;
+            letter-spacing: 0.5px;
         }
         
-        /* Ticket footer */
-        .ticket-footer {
-            padding: 25px 30px;
-            background: linear-gradient(to bottom, #fafafa, #f5f5f5);
+        .status-active {
+            background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+            color: #155724;
+        }
+        
+        .status-expired {
+            background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+            color: #721c24;
+        }
+        
+        .status-icon {
+            font-size: 18px;
+        }
+        
+        .instructions {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            font-size: 14px;
+            color: #495057;
+            line-height: 1.6;
+        }
+        
+        .instructions-expired {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+        }
+        
+        .footer {
+            padding: 20px 30px;
+            background: #f8f9fa;
             text-align: center;
             font-size: 12px;
-            color: #9ca3af;
-            border-top: 1px dashed #e5e7eb;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 10px;
+            color: #adb5bd;
+            border-top: 1px solid #e9ecef;
         }
         
-        .footer-item {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-        
-        .footer-icon {
-            font-size: 14px;
-        }
-        
-        /* Mobile responsive */
         @media (max-width: 480px) {
-            body {
-                padding: 0;
-            }
-            
-            .ticket {
+            .card {
                 border-radius: 0;
                 min-height: 100vh;
-                max-width: 100%;
             }
             
             .reference-number {
-                font-size: 30px;
+                font-size: 28px;
             }
             
             .qr-code {
-                max-width: 240px;
-            }
-            
-            .ticket-footer {
-                flex-direction: column;
-                gap: 8px;
+                max-width: 250px;
             }
         }
         
-        /* Print styles */
         @media print {
             body {
                 background: white;
             }
             
-            body::before,
-            body::after {
-                display: none;
-            }
-            
-            .ticket {
+            .card {
                 box-shadow: none;
                 max-width: 100%;
             }
             
-            .instructions {
+            .instructions,
+            .footer {
                 display: none;
             }
-        }
-        
-        /* Scan animation hint */
-        @keyframes pulse {
-            0%, 100% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.8; transform: scale(1.02); }
-        }
-        
-        .qr-section:hover .qr-code {
-            animation: pulse 2s ease-in-out infinite;
         }
     </style>
 </head>
 <body>
-    <div class="ticket">
-        <!-- Glass Header -->
-        <div class="ticket-header">
-            <h1>
-                <span class="ticket-icon">🎫</span>
-                <span>Visitor Pass</span>
-            </h1>
+    <div class="card">
+        <div class="header">
+            <h1>🎫 Visitor Pass</h1>
         </div>
         
-        <!-- Perforation -->
-        <div class="perforation"></div>
-        
-        <!-- Ticket Body -->
-        <div class="ticket-body">
-            <!-- Reference Number -->
-            <div class="reference-box">
-                <div class="reference-label">Pass Reference</div>
+        <div class="content">
+            <div class="reference-section">
+                <div class="reference-label">Your reference number</div>
                 <div class="reference-number">${pass.requestId}</div>
             </div>
             
-            <!-- QR Code -->
-            <div class="qr-section">
-                <img src="${qrCode}" class="qr-code" alt="Visitor Pass QR Code">
+            <div class="qr-container">
+                <img src="${qrCode}" class="qr-code" alt="QR Code for ${pass.requestId}">
             </div>
             
-            <!-- Instructions -->
-            <div class="instructions">
-                <div class="instructions-icon">📱</div>
-                <div class="instructions-text">
-                    Present this QR code to security at the reception desk
-                </div>
+            <div class="status-badge ${isExpired ? 'status-expired' : 'status-active'}">
+                <span class="status-icon">${isExpired ? '⏰' : '✓'}</span>
+                <span>${isExpired ? 'EXPIRED' : 'ACTIVE'}</span>
+            </div>
+            
+            <div class="instructions ${isExpired ? 'instructions-expired' : ''}">
+                ${isExpired 
+                    ? '⚠️ This pass has expired. Please contact your host to request a new pass.'
+                    : '📱 Show this QR code to security personnel at the reception desk.'
+                }
             </div>
         </div>
         
-        <!-- Footer -->
-        <div class="ticket-footer">
-            <div class="footer-item">
-                <span class="footer-icon">📅</span>
-                <span>${formattedDate}</span>
-            </div>
-            <div class="footer-item">
-                <span class="footer-icon">🕐</span>
-                <span>${formattedTime}</span>
-            </div>
-            <div class="footer-item">
-                <span class="footer-icon">🔒</span>
-                <span>Secure Pass</span>
-            </div>
+        <div class="footer">
+            Pass ID: ${pass.requestId} • Generated: ${new Date(pass.createdAt).toLocaleDateString()}
         </div>
     </div>
 </body>
@@ -584,7 +423,7 @@ function errorPage(message) {
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #f5f7fa;
             min-height: 100vh;
             display: flex;
             justify-content: center;
@@ -594,29 +433,22 @@ function errorPage(message) {
         .error-container {
             background: white;
             padding: 50px 40px;
-            border-radius: 24px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            border-radius: 20px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.12);
             text-align: center;
             max-width: 400px;
-            animation: slideUp 0.4s ease-out;
-        }
-        @keyframes slideUp {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
         }
         .error-icon {
-            font-size: 72px;
+            font-size: 64px;
             margin-bottom: 20px;
-            filter: drop-shadow(0 4px 8px rgba(0,0,0,0.1));
         }
         h1 {
             font-size: 24px;
-            color: #1f2937;
+            color: #2d3748;
             margin-bottom: 15px;
-            font-weight: 700;
         }
         p {
-            color: #6b7280;
+            color: #718096;
             font-size: 16px;
             line-height: 1.6;
         }
@@ -625,7 +457,7 @@ function errorPage(message) {
 <body>
     <div class="error-container">
         <div class="error-icon">⚠️</div>
-        <h1>Pass Not Available</h1>
+        <h1>Unable to Load Pass</h1>
         <p>${message}</p>
     </div>
 </body>
@@ -664,7 +496,7 @@ app.listen(PORT, () => {
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log(`✅  Status: Running`);
     console.log(`🌐  Port: ${PORT}`);
-    console.log(`🎫  Design: Modern Glass Ticket`);
+    console.log(`🔒  Mode: Minimalist & Secure`);
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log('');
 });
